@@ -1,0 +1,102 @@
+{% extends "nucleo/base.html" %}
+{% load moeda_br %}
+
+{% block title %}Busca Rápida de Devedores{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 3rem;">
+    
+    <!-- Hero Search Area -->
+    <section style="text-align: center; margin-top: 1rem;">
+        <h1 style="font-size: 2.25rem; font-weight: 800; letter-spacing: -0.04em; color: var(--primary);">Localizar Devedor</h1>
+        <p style="color: var(--text-muted); font-size: 1rem; margin-top: 0.75rem;">Consulte o cadastro de inadimplentes e inicie negociações de forma ágil.</p>
+        
+        <form method="get" style="margin-top: 2.5rem; display: flex; gap: 6px; box-shadow: var(--shadow); border-radius: 12px; padding: 6px; background: white;">
+            <div style="flex: 1; position: relative; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2.5" style="position: absolute; left: 16px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" name="busca" 
+                       placeholder="Digite o nome completo ou CPF..." 
+                       value="{{ busca }}" 
+                       style="width: 100%; padding: 14px 14px 14px 48px; border: none; font-size: 1.125rem; font-family: inherit; font-weight: 500; outline: none; border-radius: 8px;">
+            </div>
+            <button type="submit" class="btn-primary" style="padding: 0 24px; font-size: 1rem; font-weight: 700;">Pesquisar</button>
+            {% if busca %}
+                <a href="/" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; width: 48px; padding: 0;" title="Limpar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </a>
+            {% endif %}
+        </form>
+    </section>
+
+    <!-- Results Section -->
+    <section>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; padding: 0 4px;">
+            <div>
+                <h2 style="font-size: 1.125rem; font-weight: 700;">
+                    {% if busca %}Resultados Encontrados{% else %}Todos os Devedores (Listagem Rápida){% endif %}
+                </h2>
+                <p style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 4px;">
+                    Exibindo os cadastros mais relevantes baseados na sua busca.
+                </p>
+            </div>
+            {% if not busca %}
+            <a href="/devedores/" style="font-size: 0.8125rem; font-weight: 700; color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                Ver Base Completa (Relatório)
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="card-base" style="padding: 0; overflow: hidden;">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Nome / Cadastro</th>
+                        <th>Documento (CPF)</th>
+                        <th>Contato</th>
+                        <th style="text-align: right;">Total da Dívida</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for devedor in devedores %}
+                    <tr style="cursor: pointer;" data-href="{% url 'devedor_detail' devedor.id %}">
+                        <td style="font-weight: 600; color: var(--primary);">{{ devedor.nome }}</td>
+                        <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: var(--text-muted);">{{ devedor.cpf }}</td>
+                        <td>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ devedor.email|truncatechars:25|default:"-" }}</div>
+                            <div style="font-size: 0.75rem; font-weight: 600;">{{ devedor.celular|default:devedor.telefone|default:"-" }}</div>
+                        </td>
+                        <td style="text-align: right; font-weight: 800; color: #ef4444;">{{ devedor.total_divida|default:0|moeda_br }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="padding: 5rem 2rem; text-align: center; color: var(--text-muted);">
+                            <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;">🔍</div>
+                            <h3 style="margin-bottom: 0.25rem;">Nenhum devedor encontrado</h3>
+                            <p style="font-size: 0.875rem;">Você pode buscar pelo nome completo ou apenas pelos dígitos do CPF.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+
+<style>
+    tbody tr:hover { background: #f8fafc; }
+    .card-base { border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('tr[data-href]');
+    rows.forEach(row => {
+        row.addEventListener('click', () => {
+            window.location.href = row.dataset.href;
+        });
+    });
+});
+</script>
+{% endblock %}

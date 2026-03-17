@@ -1,0 +1,27 @@
+<table border="1">
+    <tr>
+        <th>Escola</th>
+        <th>Categoria</th>
+        <th>Ano</th>
+        <th>Parcela</th>
+        <th>Vencimento</th>
+        <th>Valor Original</th>
+        <th>Valor Atual</th>
+    </tr>
+
+    {% for divida in dividas %}
+    <tr>
+        <td>{{ divida.escola }}</td>
+        <td>{{ divida.categoria_financeiro }}</td>
+        <td>{{ divida.ano_divida }}</td>
+        <td>{{ divida.parcela }}</td>
+        <td>{{ divida.vencimento }}</td>
+        <td>{{ divida.valor_original }}</td>
+        <td>{{ divida.valor_atual }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="7">Nenhuma dívida encontrada.</td>
+    </tr>
+    {% endfor %}
+</table>

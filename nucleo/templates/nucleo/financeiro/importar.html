@@ -1,0 +1,49 @@
+{% extends "nucleo/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-0">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
+                            <i class="bi bi-file-earmark-arrow-up text-primary fs-2"></i>
+                        </div>
+                        <h2 class="h4">Importar Arquivo de Retorno</h2>
+                        <p class="text-muted">Selecione o arquivo CSV contendo os pagamentos para reconciliar.</p>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="arquivo" class="form-label fw-bold">Arquivo CSV</label>
+                            <input type="file" name="arquivo" id="arquivo" class="form-control form-control-lg" accept=".csv" required>
+                            <div class="form-text mt-2">
+                                <i class="bi bi-info-circle me-1"></i> O arquivo deve conter as colunas: <code>acordo_id</code>, <code>cpf</code>, <code>valor</code>, <code>data</code>.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Iniciar Processamento
+                            </button>
+                            <a href="{% url 'financeiro_dashboard' %}" class="btn btn-link text-muted mt-2">Cancelar e Voltar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="mt-4 p-3 bg-light rounded shadow-sm border">
+                <h6 class="fw-bold mb-2">Instruções de Segurança:</h6>
+                <ul class="small text-muted mb-0">
+                    <li>O sistema valida ID do Acordo + CPF do Devedor.</li>
+                    <li>Registros divergentes ficarão em uma fila de revisão manual.</li>
+                    <li>O processamento é idempotente (evita duplicidade).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

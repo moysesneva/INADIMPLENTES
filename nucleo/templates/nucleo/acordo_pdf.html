@@ -1,0 +1,217 @@
+{% load moeda_br %}
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Instrumento Particular de Confissão e Renegociação de Dívida</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 35px;
+            line-height: 1.6;
+            color: #000;
+        }
+
+        .cabecalho {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .cabecalho img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 22px;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+
+        .numero-acordo {
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 10px;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-top: 22px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            text-align: justify;
+            margin: 10px 0;
+        }
+
+        .assinaturas {
+            margin-top: 60px;
+        }
+
+        .linha-assinatura {
+            margin-top: 60px;
+            width: 320px;
+            border-top: 1px solid #000;
+            text-align: center;
+            padding-top: 6px;
+        }
+
+        .botoes {
+            margin-bottom: 25px;
+        }
+
+        .botoes button {
+            padding: 8px 14px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        @media print {
+            .botoes {
+                display: none;
+            }
+
+            body {
+                margin: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="botoes">
+        <button onclick="window.print()">Imprimir / Salvar PDF</button>
+        <button onclick="window.close()">Fechar</button>
+    </div>
+
+    <div class="cabecalho">
+        <img src="{% static 'img/cabecalho_cna.png' %}" alt="CNA">
+    </div>
+
+    <h1>INSTRUMENTO PARTICULAR DE CONFISSÃO E RENEGOCIAÇÃO DE DÍVIDA</h1>
+
+    <p class="numero-acordo">
+        ACORDO Nº {{ acordo.numero_acordo }}
+    </p>
+
+    <p>
+        Pelo presente instrumento particular, as partes abaixo qualificadas celebram entre si este acordo,
+        mediante as cláusulas e condições seguintes:
+    </p>
+
+    <h2>1. Das Partes</h2>
+
+    <p>
+        <strong>CREDORA:</strong> VIVENDAS CENTRO CULTURAL LTDA - ME, pessoa jurídica n.º 06.058.806/0001-17,
+        com sede em Avenida Mato Grosso, 3834, Vivendas do Bosque, Campo Grande/MS,
+        neste ato representada na forma dos seus atos constitutivos.
+    </p>
+
+    <p>
+        <strong>DEVEDOR(A):</strong> {{ devedor.nome }}, portador(a) do CPF n.º {{ devedor.cpf }}.
+    </p>
+
+    <h2>2. Da Confissão da Dívida</h2>
+
+    <p>
+        O(A) DEVEDOR(A) reconhece e confessa ser devedor(a) da CREDORA da quantia líquida,
+        certa e exigível de <strong>{{ acordo.valor_total|moeda_br }}</strong>.
+    </p>
+
+    <h2>3. Do Acordo e Condições de Pagamento</h2>
+
+    <p>
+        As partes, de comum acordo e nos termos da Política de Negociação e Recuperação da escola,
+        ajustam a quitação do débito da seguinte forma:
+    </p>
+
+    <div style="background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px;">
+        <p style="margin: 0;"><strong>Modalidade:</strong> 
+            {% if acordo.modalidade == "DIRETA_CNA" %}
+                Cobrança Direta CNA
+            {% elif acordo.modalidade == "SERASA" %}
+                Cobrança Serasa
+            {% elif acordo.modalidade == "FEIRAO_SERASA" %}
+                Cobrança Feirão Serasa
+            {% else %}
+                Negociação / Renegociação de Dívida
+            {% endif %}
+        </p>
+        <p style="margin: 5px 0 0 0;"><strong>Valor Total Negociado:</strong> {{ acordo.valor_total|moeda_br }}</p>
+        {% if acordo.valor_desconto_total > 0 %}
+            <p style="margin: 5px 0 0 0;"><strong>Desconto Concedido:</strong> {{ acordo.valor_desconto_total|moeda_br }}</p>
+        {% endif %}
+        <p style="margin: 5px 0 0 0;"><strong>Entrada:</strong> {{ acordo.entrada|moeda_br }}</p>
+        <p style="margin: 5px 0 0 0;"><strong>Saldo Remanescente:</strong> {{ acordo.saldo|moeda_br }}</p>
+        <p style="margin: 5px 0 0 0;"><strong>Parcelamento:</strong> {{ acordo.parcelas }} vez(es) de {{ acordo.valor_parcela|moeda_br }}</p>
+        <p style="margin: 5px 0 0 0;"><strong>Data do Acordo:</strong> {{ acordo.data_acordo|date:"d/m/Y H:i" }}</p>
+        <p style="margin: 5px 0 0 0;"><strong>Número do Acordo:</strong> {{ acordo.numero_acordo }}</p>
+    </div>
+
+    {% if acordo.modalidade == "SERASA" or acordo.modalidade == "FEIRAO_SERASA" %}
+        <p><i>Este acordo foi celebrado no âmbito da modalidade {{ acordo.get_modalidade_display }}, vinculada às regras de descontos de pontualidade e regularização de crédito.</i></p>
+    {% endif %}
+
+    <h2>4. Da Suspensão da Restrição ao Crédito (SERASA)</h2>
+
+    <p>
+        4.1. A CREDORA compromete-se a solicitar a baixa/suspensão de qualquer registo de inadimplência
+        em nome do(a) DEVEDOR(A) nos órgãos de proteção ao crédito (SERASA) no prazo de até 05 (cinco)
+        dias úteis após a compensação do pagamento da primeira parcela (ou parcela única).
+    </p>
+
+    <p>
+        4.2. Em caso de atraso ou falta de pagamento de qualquer das parcelas deste acordo,
+        a restrição poderá ser reativada imediatamente, sem necessidade de nova notificação.
+    </p>
+
+    <h2>5. Do Incumprimento e Vencimento Antecipado</h2>
+
+    <p>
+        O não pagamento de qualquer parcela nas datas aprazadas importará no vencimento antecipado
+        de toda a dívida remanescente, sobre a qual incidirá multa moratória de 10% (dez por cento),
+        juros de 1% ao mês e atualização monetária, independentemente de aviso judicial ou extrajudicial.
+    </p>
+
+    <h2>6. Da Manutenção do Vínculo Educacional (Se aplicável)</h2>
+
+    <p>
+        Caso este acordo faça parte de modalidade vinculada à continuidade dos estudos,
+        o(a) DEVEDOR(A) declara estar ciente de que a manutenção da matrícula dependerá
+        da pontualidade no cumprimento deste acordo de renegociação.
+    </p>
+
+    <h2>7. Do Foro</h2>
+
+    <p>
+        Para dirimir quaisquer dúvidas oriundas deste instrumento, as partes elegem o foro
+        da comarca de Campo Grande/MS.
+    </p>
+
+    <p>
+        E, por estarem assim justas e contratadas, as partes assinam o presente instrumento
+        em 02 (duas) vias de igual teor.
+    </p>
+
+    <p>
+        Campo Grande/MS, {{ acordo.data_acordo|date:"d" }} de {{ acordo.data_acordo|date:"F" }} de {{ acordo.data_acordo|date:"Y" }}.
+    </p>
+
+    <div class="assinaturas">
+        <div class="linha-assinatura">CNA / Credora</div>
+        <br><br>
+        <div class="linha-assinatura">{{ devedor.nome }} (Devedor)</div>
+        <br><br>
+        <div class="linha-assinatura">Testemunha 1 — CPF:</div>
+        <br><br>
+        <div class="linha-assinatura">Testemunha 2 — CPF:</div>
+    </div>
+
+</body>
+</html>

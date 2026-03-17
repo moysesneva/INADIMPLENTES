@@ -1,0 +1,58 @@
+{% extends "nucleo/base.html" %}
+{% load moeda_br %}
+
+{% block title %}Acordos{% endblock %}
+
+{% block content %}
+<h1>Relatório de Acordos</h1>
+
+<form method="get" class="filtros">
+    {% for field in filter.form %}
+    <div class="filtros-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+    </div>
+    {% endfor %}
+    <button type="submit" class="botao-secundario" style="background: #1f3c88; color: white;">Filtrar</button>
+    <a href="{% url 'acordo_list' %}" class="botao-secundario">Limpar</a>
+</form>
+
+<div class="acoes-export">
+    <span>Exportar resultados filtrados:</span>
+    <a href="{% url 'exportar_acordos' %}?{{ request.GET.urlencode }}&formato=csv" class="botao-secundario">CSV</a>
+    <a href="{% url 'exportar_acordos' %}?{{ request.GET.urlencode }}&formato=excel" class="botao-secundario">Excel</a>
+</div>
+
+<table>
+    <tr>
+        <th>Nº Acordo</th>
+        <th>Devedor</th>
+        <th>CPF</th>
+        <th>Valor</th>
+        <th>Parcelas</th>
+        <th>Status</th>
+        <th>Data</th>
+        <th>PDF</th>
+    </tr>
+
+    {% for acordo in filter.qs %}
+    <tr>
+        <td>{{ acordo.numero_acordo }}</td>
+        <td>{{ acordo.devedor.nome }}</td>
+        <td>{{ acordo.devedor.cpf }}</td>
+        <td>{{ acordo.valor_total|moeda_br }}</td>
+        <td>{{ acordo.parcelas }}</td>
+        <td>{{ acordo.get_status_display }}</td>
+        <td>{{ acordo.data_acordo|date:"d/m/Y H:i" }}</td>
+        <td>
+            <a href="{% url 'imprimir_acordo' acordo.id %}" target="_blank">Abrir PDF</a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="8">Nenhum acordo encontrado com os filtros aplicados.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

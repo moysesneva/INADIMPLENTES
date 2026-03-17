@@ -1,0 +1,195 @@
+1. Title
+
+Inspect and Validate the Spreadsheet Structure for a CNA Debt Negotiation System
+
+2. Context
+
+I am building a local-first debt negotiation and delinquency management system for CNA schools.
+
+The attached spreadsheet currently refers to CNA VIVENDAS and covers years 2015 through 2025. This spreadsheet will be the primary source for the first version of the system.
+
+Before generating any Django models, database schema, business logic, or UI, the first task is to inspect the spreadsheet structure and validate the real column mapping.
+
+This system must later support:
+- CNA VIVENDAS
+- CNA ITANHANGÁ
+
+A critical business rule already defined:
+- debtor consolidation must be based on "Categoria do Financeiro"
+- all periods for the same debtor/category must be consolidated together
+- original row-level detail must be preserved
+
+The system will later support three collection scenarios:
+1. COBRANÇA DIRETA CNA
+2. COBRANÇA SERASA
+3. COBRANÇA FEIRÃO SERASA
+
+The scenario mappings must only be accepted after spreadsheet validation.
+
+3. Task
+
+Inspect the spreadsheet first and produce a structured validation report.
+
+Do not generate the application yet.
+
+The goal of this step is to understand the spreadsheet with high confidence before implementation.
+
+You must:
+- inspect the workbook structure
+- identify sheet names
+- identify the true header row
+- list relevant columns with their spreadsheet letters
+- identify columns needed for debtor identity
+- identify columns needed for consolidation by "Categoria do Financeiro"
+- identify columns needed for debt year, due date, original value, current value, and school identification
+- validate the scenario-specific financial columns
+- detect inconsistencies, ambiguities, duplicate meanings, empty columns, or suspicious mappings
+- highlight any uncertainty that requires user confirmation before coding
+
+4. Requirements
+
+A. Workbook Inspection
+Inspect the spreadsheet and report:
+- workbook sheet names
+- which sheet contains the operational data
+- whether there are merged cells, title blocks, or multi-row headers
+- which row should be treated as the true data header row
+
+B. Core Business Columns
+Confirm the real spreadsheet columns for at least:
+- Nome do Responsável Financeiro
+- Categoria do Financeiro
+- Ano da dívida
+- Data do vencimento
+- Valor original
+- Valor atual
+- Escola, if available
+- any debtor identifier fields such as CPF, email, phone, contract number, student name, or similar
+
+C. Consolidation Analysis
+Determine how consolidation can be safely performed using:
+- Categoria do Financeiro
+- debtor identity fields
+- financial period/year fields
+
+Explain whether "Categoria do Financeiro" alone is sufficient, or whether it should be combined with another field to avoid incorrect merges.
+
+D. Scenario Mapping Validation
+
+Validate the spreadsheet mappings for the following scenarios.
+
+D1. COBRANÇA DIRETA CNA
+Inspect the spreadsheet and identify the actual columns used for:
+- Juros/Multas a Cobrar
+- Valor Final a Pagar (Principal + Juros + Multa)
+- Valor da 1ª Parcela (Entrada à Vista)
+- Valor da 1ª Parcela (Entrada)
+- Valor das Parcelas Restante
+- Valor das Parcelas x Número de Parcelas
+
+Do not assume the mapping from labels only. Confirm the actual columns from the spreadsheet.
+
+D2. COBRANÇA SERASA
+Validate the following user-provided mapping block:
+- Juros/Multas a Cobrar = AJ
+- Valor Final a Pagar (Principal + Juros + Multa) = AD
+- Valor da 1ª Parcela (Entrada à Vista) = AE
+- Valor da 1ª Parcela (Entrada) = AF
+- Valor das Parcelas Restante = AG
+- Valor das Parcelas x Número de Parcelas = AH
+
+Also validate this second mapping block:
+- Juros/Multas a Cobrar = AC
+- Valor Final a Pagar (Principal + Juros + Multa) = AK
+- Valor da 1ª Parcela (Entrada à Vista) = AL
+- Valor da 1ª Parcela (Entrada) = AM
+- Valor das Parcelas Restante = N
+- Valor das Parcelas x Número de Parcelas = AO
+
+You must determine whether:
+- both blocks are valid and distinct
+- one block is incorrect
+- column N is a typo or real
+- there are multiple SERASA-related sections in the spreadsheet
+
+D3. COBRANÇA FEIRÃO SERASA
+Validate the following mapping:
+- Juros/Multas a Cobrar = V
+- Valor Final a Pagar (Principal + Juros com desconto) = W
+- Valor da 1ª Parcela (Entrada à Vista) = X
+- Valor da 1ª Parcela (Entrada) = Y
+- Valor das Parcelas Restante = Z
+- Valor das Parcelas x Número de Parcelas = AA
+
+Confirm whether these columns are accurate in the spreadsheet.
+
+E. Data Quality Review
+Identify:
+- empty columns
+- duplicated columns
+- inconsistent data formats
+- date inconsistencies
+- numeric formatting issues
+- debtor duplicates
+- missing critical values
+- anything that may affect import or consolidation
+
+F. Output Must Be Analysis Only
+This step must not generate code yet.
+This step must not generate Django models yet.
+This step must not create a database schema yet.
+
+The purpose is validation and analysis only.
+
+5. Constraints
+
+- Do not invent spreadsheet meanings.
+- Do not assume the header row without inspecting the file.
+- Do not generate app code in this step.
+- Do not create models or migrations in this step.
+- Do not assume "Categoria do Financeiro" is sufficient without checking for merge risks.
+- Do not silently accept uncertain mappings.
+- Flag ambiguity clearly.
+
+6. Files to Inspect / Request
+
+Inspect:
+- the attached Excel workbook
+- all relevant sheets
+- merged header/title areas
+- actual data rows
+- actual column positions and letters
+- possible scenario blocks for Direct CNA, SERASA, and Feirão SERASA
+
+If necessary, request clarification only after completing the inspection summary.
+
+7. Output Format
+
+Provide the result in this order:
+
+1. workbook overview
+2. detected sheet names
+3. true header row identification
+4. core field mapping table
+5. scenario mapping validation table
+6. consolidation analysis by "Categoria do Financeiro"
+7. data quality issues found
+8. ambiguities that require user confirmation
+9. recommended next step before implementation
+
+8. Reasoning Depth (NZT-48 Toggle)
+
+Use high reasoning depth.
+Think like a senior data analyst and software architect validating a financial spreadsheet before system design.
+Prioritize correctness, traceability, and implementation safety.
+
+9. Validation / Self-Check
+
+Before finalizing, verify:
+- Did I inspect the workbook structure first?
+- Did I identify the real header row?
+- Did I confirm or reject the proposed scenario mappings?
+- Did I validate whether column N is correct or suspicious?
+- Did I identify the fields needed for debtor consolidation?
+- Did I flag ambiguous or risky assumptions clearly?
+- Did I avoid generating code in this step?

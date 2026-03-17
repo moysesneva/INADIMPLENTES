@@ -1,0 +1,337 @@
+{% extends "nucleo/base.html" %}
+{% load moeda_br %}
+
+{% block title %}Dashboard Gerencial{% endblock %}
+
+{% block content %}
+<style>
+    .dash-container { display: flex; flex-direction: column; gap: 2.5rem; }
+    .dash-header { display: flex; justify-content: space-between; align-items: flex-end; }
+    .dash-header h1 { font-size: 1.875rem; color: var(--text-main); }
+    .dash-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem; }
+
+    /* KPI Grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; }
+    .kpi-card .label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    .kpi-card .value { font-size: 1.75rem; font-weight: 700; color: var(--text-main); line-height: 1; }
+    .kpi-card .trend { font-size: 0.75rem; margin-top: 0.75rem; display: flex; align-items: center; gap: 4px; }
+    
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .bg-pago { background: #10b981; }
+    .bg-pendente { background: #f59e0b; }
+    .bg-atrasado { background: #ef4444; }
+
+    /* Alert Section */
+    .alert-section { display: flex; flex-direction: column; gap: 1rem; }
+    .alert-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; transition: transform 0.2s, box-shadow 0.2s; }
+    .alert-item:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .alert-content { display: flex; align-items: flex-start; gap: 1rem; }
+    .alert-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    
+    .severity-ALTA { border-left: 4px solid #ef4444; }
+    .severity-MEDIA { border-left: 4px solid #f59e0b; }
+    .severity-BAIXA { border-left: 4px solid #3b82f6; }
+
+    /* Alert Icon Styles */
+    .alert-icon-ALTA { background: #fee2e2; color: #dc2626; }
+    .alert-icon-MEDIA { background: #fef3c7; color: #d97706; }
+    .alert-icon-BAIXA { background: #dbeafe; color: #2563eb; }
+
+    .progress-track { background: #f1f5f9; border-radius: 999px; height: 8px; margin-top: 1rem; position: relative; overflow: hidden; }
+    .progress-fill { background: var(--primary); height: 100%; border-radius: 999px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); width: var(--progress, 0%); }
+
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .section-head h2 { font-size: 1.25rem; font-weight: 600; }
+
+    .table-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+
+<div class="dash-container">
+    
+    <header class="dash-header">
+        <div>
+            <h1>Dashboard de Recuperação</h1>
+            <p>Visão estratégica da carteira em tempo real</p>
+        </div>
+        <div style="text-align: right;">
+            <span class="badge" style="background: var(--primary-light); color: var(--primary); font-weight: 700;">
+                Última atualização: {{ "now"|date:"H:i" }}
+            </span>
+        </div>
+    </header>
+
+    <!-- Main KPIs -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div>
+                <div class="label">Recuperação Bruta (Total)</div>
+                <div class="value" style="color: #059669;">{{ kpis.total_recuperado|moeda_br }}</div>
+            </div>
+            <div class="trend" style="color: #059669;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                <span>Soma acumulada liquidada</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div>
+                <div class="label">Performance no Mês</div>
+                <div class="value">{{ kpis.recuperado_mes_atual|moeda_br }}</div>
+            </div>
+            <div class="trend" style="color: var(--text-muted);">
+                <span>Recuperação desde o dia 01</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div>
+                <div class="label">Janela (Últimos 30 dias)</div>
+                <div class="value">{{ kpis.recuperado_30_dias|moeda_br }}</div>
+            </div>
+            <div class="trend" style="color: var(--text-muted);">
+                <span>Volume de entrada recente</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div>
+                <div class="label">Eficiência da Carteira</div>
+                <div class="value">{{ kpis.taxa_recuperacao|floatformat:1 }}%</div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="--progress: {{ kpis.taxa_recuperacao|default:0 }}%;"></div>
+                </div>
+            </div>
+            <div class="trend" style="color: var(--text-muted);">
+                <span>Taxa de conversão global</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Second Row: Operational Health -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="label">Origem dos Pagamentos</div>
+            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.8125rem; font-weight: 500; color: var(--text-muted);">Lotes de Retorno</span>
+                    <span style="font-weight: 600;">{{ kpis.pagamentos_lote|moeda_br }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.8125rem; font-weight: 500; color: var(--text-muted);">Regularização Manual</span>
+                    <span style="font-weight: 600;">{{ kpis.pagamentos_manuais|moeda_br }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="label">Saúde das Parcelas</div>
+            <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">{{ kpis.parcelas_pagas }}</div>
+                    <div style="font-size: 0.625rem; font-weight: 700; color: var(--text-muted);">PAGAS</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #f59e0b;">{{ kpis.parcelas_pendentes }}</div>
+                    <div style="font-size: 0.625rem; font-weight: 700; color: var(--text-muted);">À VENCER</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #ef4444;">{{ kpis.parcelas_atrasadas }}</div>
+                    <div style="font-size: 0.625rem; font-weight: 700; color: var(--text-muted);">ATRASADAS</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="label">Pipeline de Acordos</div>
+            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                    <span style="color: var(--text-muted);">Ativos / Pagando</span>
+                    <span style="font-weight: 600;">{{ qtd_aguardando }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                    <span style="color: var(--text-muted);">Liquidados</span>
+                    <span style="font-weight: 600; color: #10b981;">{{ qtd_pago }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                    <span style="color: var(--text-muted);">Quebrados</span>
+                    <span style="font-weight: 600; color: #ef4444;">{{ qtd_quebrado }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas Financeiros -->
+    <section class="alert-section">
+        <div class="section-head">
+            <h2>Alertas Financeiros Proativos</h2>
+            <span class="badge" style="background: #fee2e2; color: #b91c1c;">{{ total_alertas_abertos }} Pendentes</span>
+        </div>
+
+        {% for alerta in alertas_recentes %}
+        <div class="alert-item severity-{{ alerta.severidade }}">
+            <div class="alert-content">
+                <div class="alert-icon alert-icon-{{ alerta.severidade }}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.6875rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ alerta.get_tipo_alerta_display }}</span>
+                        <span style="width: 4px; height: 4px; background: #cbd5e1; border-radius: 50%;"></span>
+                        <span style="font-weight: 600; font-size: 0.9375rem;">{{ alerta.acordo.devedor.nome|truncatechars:35 }}</span>
+                    </div>
+                    <p style="margin: 4px 0 0 0; font-size: 0.8125rem; color: var(--text-muted);">{{ alerta.descricao }}</p>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 0.6875rem; color: var(--text-muted); margin-bottom: 8px;">{{ alerta.data_criacao|date:"d/m H:i" }}</div>
+                <a href="{% url 'devedor_detail' alerta.acordo.devedor.id %}" class="btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;">Tratar Alerta</a>
+            </div>
+        </div>
+        {% empty %}
+        <div style="padding: 3rem; text-align: center; background: #fff; border: 1px dashed var(--border); border-radius: var(--radius);">
+            <div style="font-size: 2rem; margin-bottom: 1rem;">✨</div>
+            <h3 style="font-weight: 600; margin-bottom: 0.5rem;">Nada a tratar no momento</h3>
+            <p style="color: var(--text-muted); font-size: 0.875rem;">Sua carteira está saudável e sem riscos detectados.</p>
+        </div>
+        {% endfor %}
+    </section>
+
+    <!-- F2: Performance Analytics -->
+    <div class="grid-2">
+        <div class="table-container">
+            <div style="padding: 1.25rem; border-bottom: 1px solid var(--border); background: #fafafa;">
+                <h3 style="font-size: 1rem;">Performance de Caixa</h3>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Recuperação por operador de recebimento</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Operador</th>
+                        <th style="text-align: right;">Recuperado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for op in kpis_gestao.ranking_operadores %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ op.get_full_name|default:op.username }}</td>
+                        <td style="text-align: right; font-weight: 600; color: #10b981;">{{ op.valor_recuperado|moeda_br }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="text-align: center; color: var(--text-muted);">Sem dados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-container">
+            <div style="padding: 1.25rem; border-bottom: 1px solid var(--border); background: #fafafa;">
+                <h3 style="font-size: 1rem;">Eficiência Comercial</h3>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">Conversão de acordos firmados</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Operador</th>
+                        <th style="text-align: right;">Conversão (Pagas / Criadas)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for op in kpis_gestao.conversao_operadores %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ op.get_full_name|default:op.username }}</td>
+                        <td style="text-align: right;">
+                            <span style="font-weight: 600; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 0.8125rem;">
+                                {{ op.total_pagos }} <span style="color: var(--text-muted); font-weight: 400; margin: 0 4px;">/</span> {{ op.total_criados }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="text-align: center; color: var(--text-muted);">Sem dados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bottom Lists -->
+    <div class="grid-2">
+        <div class="alert-section">
+            <div class="section-head">
+                <h2>Top 10 Maiores Devedores</h2>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Devedor</th>
+                            <th style="text-align: right;">Dívida Atual</th>
+                            <th style="text-align: center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in top_devedores %}
+                        <tr>
+                            <td>
+                                <div style="font-weight: 600;">{{ item.devedor.nome }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ item.devedor.cpf }}</div>
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">{{ item.total|moeda_br }}</td>
+                            <td style="text-align: center;">
+                                <a href="{% url 'devedor_detail' item.devedor.id %}" class="btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">Abrir</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="alert-section">
+            <div class="section-head">
+                <h2>Fluxo Recente de Acordos</h2>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Devedor</th>
+                            <th style="text-align: right;">Valor</th>
+                            <th style="text-align: right;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for acordo in ultimos_acordos %}
+                        <tr>
+                            <td style="font-size: 0.75rem; color: var(--text-muted);">{{ acordo.data_acordo|date:"d/m/Y" }}</td>
+                            <td>
+                                <div style="font-weight: 500;">{{ acordo.devedor.nome|truncatechars:20 }}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">#{{ acordo.numero_acordo }}</div>
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">{{ acordo.valor_total|moeda_br }}</td>
+                            <td style="text-align: right;">
+                                {% if acordo.status == 'PAGO' %}
+                                    <span class="badge" style="background: #d1fae5; color: #065f46;">Liduidado</span>
+                                {% elif acordo.status == 'QUEBRADO' %}
+                                    <span class="badge" style="background: #fee2e2; color: #991b1b;">Quebrado</span>
+                                {% else %}
+                                    <span class="badge" style="background: #fef3c7; color: #92400e;">Em curso</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

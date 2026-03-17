@@ -1,0 +1,138 @@
+{% extends "nucleo/base.html" %}
+
+{% block title %}Devedores | CNA Finanças{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 2rem;">
+    
+    <header style="display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;">
+        <div>
+            <h1 style="letter-spacing: -0.04em;">Base Geral de Devedores</h1>
+            <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">Relatório consolidado com ferramentas avançadas de filtragem e exportação.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{% url 'exportar_devedores' %}?{{ request.GET.urlencode }}&formato=csv" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8125rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Exportar CSV
+            </a>
+            <a href="{% url 'exportar_devedores' %}?{{ request.GET.urlencode }}&formato=excel" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8125rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Excel (XLSX)
+            </a>
+        </div>
+    </header>
+
+    <!-- Filters Section -->
+    <div class="card-base" style="background: #ffffff; border-color: var(--border);">
+        <div style="margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Filtros de Busca</span>
+        </div>
+        <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; align-items: flex-end;">
+            {% for field in filter.form %}
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label for="{{ field.id_for_label }}" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">{{ field.label }}</label>
+                <div class="custom-input-wrapper">
+                    {{ field }}
+                </div>
+            </div>
+            {% endfor %}
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn-primary" style="flex: 1; justify-content: center; height: 38px;">Aplicar</button>
+                <a href="{% url 'devedor_list' %}" class="btn-secondary" style="flex: 1; text-align: center; justify-content: center; height: 38px; display: inline-flex; align-items: center; font-size: 0.875rem;">Limpar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Table -->
+    <div class="card-base" style="padding: 0; overflow: hidden; border-color: var(--border);">
+        <table class="hover-table">
+            <thead>
+                <tr>
+                    <th style="width: 35%;">Nome Completo</th>
+                    <th style="width: 20%;">Documento / CPF</th>
+                    <th style="width: 25%;">E-mail</th>
+                    <th style="width: 20%;">Cidade / UF</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for devedor in filter.qs %}
+                <tr style="cursor: pointer;" data-href="{% url 'devedor_detail' devedor.id %}">
+                    <td>
+                        <div style="font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                            {{ devedor.nome }}
+                            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0; transition: opacity 0.2s; color: var(--text-muted);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </div>
+                    </td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: var(--text-muted);">{{ devedor.cpf }}</td>
+                    <td style="color: var(--text-muted);">{{ devedor.email|default:"-" }}</td>
+                    <td>
+                        {% if devedor.cidade %}
+                            <div style="display: inline-flex; align-items: center; gap: 4px;">
+                                <span style="font-weight: 500;">{{ devedor.cidade }}</span>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">({{ devedor.uf }})</span>
+                            </div>
+                        {% else %}
+                            <span style="color: #cbd5e1; font-style: italic; font-size: 0.8125rem;">Não informado</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="padding: 5rem 2rem; text-align: center; color: var(--text-muted);">
+                        <div style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5;">🔍</div>
+                        <h3 style="margin-bottom: 0.25rem;">Nenhum devedor encontrado</h3>
+                        <p style="font-size: 0.875rem;">Tente ajustar seus filtros para encontrar o que procura.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<style>
+    /* Styling Django Form Widgets */
+    .custom-input-wrapper input, 
+    .custom-input-wrapper select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #fdfdfd;
+        font-size: 0.875rem;
+        color: var(--text-main);
+        transition: all 0.2s;
+        height: 38px;
+    }
+    .custom-input-wrapper input:focus, 
+    .custom-input-wrapper select:focus {
+        border-color: var(--primary);
+        background: white;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(31, 60, 136, 0.1);
+    }
+    
+    .hover-table tr:hover { background: #f8fafc; }
+    .hover-table tr:hover .chevron { opacity: 1 !important; }
+    
+    @media (max-width: 768px) {
+        header { flex-direction: column; align-items: flex-start !important; }
+        .acoes-topo { width: 100%; }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('tr[data-href]');
+    rows.forEach(row => {
+        row.addEventListener('click', () => {
+            window.location.href = row.dataset.href;
+        });
+    });
+});
+</script>
+{% endblock %}
+
+

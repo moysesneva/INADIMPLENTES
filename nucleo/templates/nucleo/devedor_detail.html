@@ -1,0 +1,375 @@
+{% extends "nucleo/base.html" %}
+{% load moeda_br %}
+
+{% block title %}Perfil: {{ devedor.nome }} | CNA Finanças{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 2.5rem;">
+
+    <!-- Breadcrumbs & Actions -->
+    <header style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <nav style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem; font-size: 0.8125rem;">
+                <a href="{% url 'devedor_list' %}" style="color: var(--text-muted); text-decoration: none; font-weight: 500;">Devedores</a>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <span style="color: var(--text-muted);">Cadastro #{{ devedor.id }}</span>
+            </nav>
+            <h1 style="font-size: 2.25rem; letter-spacing: -0.03em; color: var(--primary);">{{ devedor.nome }}</h1>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{% url 'gerar_acordo' devedor.id %}" class="btn-primary" style="box-shadow: 0 4px 12px rgba(31, 60, 136, 0.2);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                Novo Acordo Manual
+            </a>
+        </div>
+    </header>
+
+    <!-- Info Cards -->
+    <div class="info-grid">
+        <div class="card-base" style="border-left: 4px solid var(--primary);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1.5rem;">
+                <div style="background: var(--primary-light); padding: 8px; border-radius: 8px; display: inline-flex;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+                <h2 style="font-size: 1rem;">Dados Pessoais</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div>
+                    <label class="field-label">Documento CPF</label>
+                    <span class="field-value">{{ devedor.cpf }}</span>
+                </div>
+                <div>
+                    <label class="field-label">E-mail de Contato</label>
+                    <span class="field-value">{{ devedor.email|default:"-" }}</span>
+                </div>
+                <div>
+                    <label class="field-label">Telefone Fixo</label>
+                    <span class="field-value">{{ devedor.telefone|default:"-" }}</span>
+                </div>
+                <div>
+                    <label class="field-label">WhatsApp / Celular</label>
+                    <span class="field-value">{{ devedor.celular|default:"-" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-base">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1.5rem;">
+                <div style="background: var(--primary-light); padding: 8px; border-radius: 8px; display: inline-flex;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                </div>
+                <h2 style="font-size: 1rem;">Endereço de Correspondência</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem;">
+                <div style="grid-column: span 2;">
+                    <label class="field-label">Logradouro e Número</label>
+                    <span class="field-value">{{ devedor.logradouro|default:"-" }}, {{ devedor.numero|default:"-" }}</span>
+                </div>
+                <div>
+                    <label class="field-label">Bairro</label>
+                    <span class="field-value">{{ devedor.bairro|default:"-" }}</span>
+                </div>
+                <div>
+                    <label class="field-label">Cidade / UF</label>
+                    <span class="field-value">{{ devedor.cidade|default:"-" }}{% if devedor.uf %} / {{ devedor.uf }}{% endif %}</span>
+                </div>
+                <div>
+                    <label class="field-label">CEP</label>
+                    <span class="field-value">{{ devedor.cep|default:"-" }}</span>
+                </div>
+                <div>
+                    <label class="field-label">Complemento</label>
+                    <span class="field-value">{{ devedor.complemento|default:"-" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consolidated Debt Card -->
+    <div class="debt-hero">
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <span class="hero-label">Dívida Total Consolidada</span>
+            <div class="hero-value">{{ total|moeda_br }}</div>
+        </div>
+        <div style="text-align: right;">
+            <div class="hero-sub">{{ dividas|length }} débitos em aberto detectados</div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+                <div class="hero-stat">
+                    <strong>{{ acordos|length }}</strong>
+                    <span>Acordos Históricos</span>
+                </div>
+                <div style="width: 1px; background: rgba(255,255,255,0.2);"></div>
+                <div class="hero-stat">
+                    <strong>{{ devedor.data_cadastro|date:"Y" }}</strong>
+                    <span>Ano de Cadastro</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simulations -->
+    <section>
+        <div class="section-header">
+            <div>
+                <h2>Simulações de Negociação Inteligente</h2>
+                <p>Cálculos automáticos baseados nas políticas de desconto vigentes.</p>
+            </div>
+        </div>
+        <div class="simulation-grid">
+            {% for mod_id, sim in simulacoes.items %}
+                {% if sim %}
+                <div class="sim-card mod-{{ mod_id|lower }}">
+                    <div class="sim-header">
+                        <span class="mod-name">{{ sim.modalidade_label }}</span>
+                        <div class="mod-dot"></div>
+                    </div>
+                    
+                    <div class="sim-main">
+                        <label>Vl. Final com Desconto</label>
+                        <div class="final-value">{{ sim.valor_final|moeda_br }}</div>
+                        <div class="savings-tag">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
+                            Economia de {{ sim.desconto_concedido|moeda_br }}
+                        </div>
+                    </div>
+
+                    <div class="sim-details">
+                        <div class="sim-row">
+                            <span>Entrada Mínima</span>
+                            <strong>{{ sim.entrada_minima|moeda_br }}</strong>
+                        </div>
+                        <div class="sim-row">
+                            <span>Parcelamento</span>
+                            <strong>Até {{ sim.parcelas_maximas }}x</strong>
+                        </div>
+                        <div class="sim-footer">
+                            {{ sim.texto_parcelamento }}
+                        </div>
+                    </div>
+                    
+                    <a href="{% url 'gerar_acordo' devedor.id %}?modalidade={{ mod_id }}&entrada={{ sim.entrada_minima }}&parcelas={{ sim.parcelas_maximas }}" 
+                       class="btn-apply">
+                        Aplicar Esta Negociação
+                    </a>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- History Tables -->
+    <div style="display: flex; flex-direction: column; gap: 3rem;">
+        
+        <section>
+            <div class="section-header">
+                <h2>Extrato de Débitos Originais</h2>
+            </div>
+            <div class="card-base" style="padding: 0; overflow: hidden;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Unidade / Escola</th>
+                            <th>Referência / Ano</th>
+                            <th>Vencimento</th>
+                            <th style="text-align: right;">Vr. Original</th>
+                            <th style="text-align: right;">Vr. Corrigido</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for divida in dividas %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ divida.escola }}</td>
+                            <td><span class="ref-badge">{{ divida.ano_divida }} - Parcela {{ divida.parcela }}</span></td>
+                            <td style="color: var(--text-muted);">{{ divida.vencimento|date:"d/m/Y" }}</td>
+                            <td style="text-align: right; color: var(--text-muted); opacity: 0.7;">{{ divida.valor_original|moeda_br }}</td>
+                            <td style="text-align: right; font-weight: 700; color: #ef4444;">{{ divida.valor_atual|moeda_br }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <div class="section-header">
+                <h2>Gestão de Acordos Registrados</h2>
+            </div>
+            {% for acordo in acordos %}
+            <div class="agreement-card">
+                <div class="agreement-header">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="agreement-id">#{{ acordo.numero_acordo }}</span>
+                        <div class="agreement-meta">Gerado em {{ acordo.data_acordo|date:"d M Y" }} às {{ acordo.data_acordo|date:"H:i" }}</div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <form method="post" action="{% url 'alterar_status_acordo' acordo.id %}" style="display: flex; gap: 6px;">
+                            {% csrf_token %}
+                            <select name="status" class="status-select">
+                                <option value="EM_NEGOCIACAO" {% if acordo.status == 'EM_NEGOCIACAO' %}selected{% endif %}>EM NEGOCIAÇÃO</option>
+                                <option value="AGUARDANDO_PAGAMENTO" {% if acordo.status == 'AGUARDANDO_PAGAMENTO' %}selected{% endif %}>AGUARDANDO PGTO</option>
+                                <option value="PAGO" {% if acordo.status == 'PAGO' %}selected{% endif %}>QUITADO</option>
+                                <option value="QUEBRADO" {% if acordo.status == 'QUEBRADO' %}selected{% endif %}>QUEBRADO</option>
+                                <option value="CANCELADO" {% if acordo.status == 'CANCELADO' %}selected{% endif %}>CANCELADO</option>
+                            </select>
+                            <button type="submit" class="btn-save-status">Atualizar</button>
+                        </form>
+                        <a href="{% url 'imprimir_acordo' acordo.id %}" target="_blank" class="btn-pdf" title="Gerar PDF">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="agreement-stats">
+                    <div class="stat-box">
+                        <label>VR. TOTAL NEGOCIADO</label>
+                        <span>{{ acordo.valor_total|moeda_br }}</span>
+                    </div>
+                    <div class="stat-box">
+                        <label>ENTRADA LIQUIDADA</label>
+                        <span style="color: #059669;">{{ acordo.entrada|moeda_br }}</span>
+                    </div>
+                    <div class="stat-box">
+                        <label>SALDO REMANESCENTE</label>
+                        <span style="color: #dc2626;">{{ acordo.saldo|moeda_br }}</span>
+                    </div>
+                    <div class="stat-box">
+                        <label>VENCIMENTO PARCELAS</label>
+                        <span style="font-size: 0.8125rem;">{{ acordo.parcelas }}x de {{ acordo.valor_parcela|moeda_br }}</span>
+                    </div>
+                </div>
+
+                <div class="agreement-details">
+                    <details>
+                        <summary>
+                            <span>Cronograma de Recebimentos ({{ acordo.detalhe_parcelas.count }})</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </summary>
+                        <div class="installments-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Seq.</th>
+                                        <th>Vencimento</th>
+                                        <th style="text-align: right;">Vr. Previsto</th>
+                                        <th style="text-align: right;">Vr. Pago</th>
+                                        <th>Dt. Pagamento</th>
+                                        <th style="text-align: center;">Status</th>
+                                        <th style="text-align: right;">Ações de Baixa</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in acordo.detalhe_parcelas.all %}
+                                    <tr>
+                                        <td style="font-weight: 700;">{{ p.numero|stringformat:"02d" }}</td>
+                                        <td>{{ p.vencimento|date:"d/m/Y" }}</td>
+                                        <td style="text-align: right; font-weight: 600;">{{ p.valor_previsto|moeda_br }}</td>
+                                        <td style="text-align: right;">{{ p.valor_pago|moeda_br }}</td>
+                                        <td>{{ p.data_pagamento|date:"d/m/Y"|default:"-" }}</td>
+                                        <td style="text-align: center;">
+                                            <span class="badge badge-{{ p.status|lower }}">
+                                                {{ p.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            {% if p.status != 'PAGO' %}
+                                            <form method="post" action="{% url 'baixar_parcela' p.id %}" class="baixa-form">
+                                                {% csrf_token %}
+                                                <input type="number" name="valor_pago" step="0.01" value="{{ p.valor_previsto|stringformat:".2f" }}" required>
+                                                <input type="date" name="data_pagamento" value="{% now "Y-m-d" %}" required>
+                                                <button type="submit">Baixar</button>
+                                            </form>
+                                            {% else %}
+                                            <span class="confirmed-tag">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                Liquidado
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+    </div>
+</div>
+
+<style>
+    /* Info Grid Layout */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .field-label { display: block; font-size: 0.6875rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.02em; }
+    .field-value { font-weight: 600; font-size: 0.9375rem; }
+
+    /* Hero Card */
+    .debt-hero { background: linear-gradient(135deg, var(--primary) 0%, #0f172a 100%); color: white; padding: 2.5rem 3rem; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(31, 60, 136, 0.3); }
+    .hero-label { font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; opacity: 0.7; letter-spacing: 0.1em; }
+    .hero-value { font-size: 3.5rem; font-weight: 800; margin-top: 0.25rem; letter-spacing: -0.04em; }
+    .hero-sub { font-size: 0.875rem; opacity: 0.8; font-weight: 500; }
+    .hero-stat { display: flex; flex-direction: column; text-align: center; }
+    .hero-stat strong { font-size: 1.25rem; font-weight: 700; }
+    .hero-stat span { font-size: 0.625rem; font-weight: 700; opacity: 0.6; text-transform: uppercase; margin-top: 2px; }
+
+    /* Sections */
+    .section-header { margin-bottom: 1.5rem; }
+    .section-header h2 { font-size: 1.25rem; letter-spacing: -0.01em; }
+    .section-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 4px; }
+
+    /* Simulation Cards */
+    .simulation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+    .sim-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+    .sim-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+    .sim-header { display: flex; justify-content: space-between; align-items: center; }
+    .mod-name { font-weight: 800; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .mod-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .mod-direta_cna .mod-name { color: #2563eb; } .mod-direta_cna .mod-dot { background: #2563eb; } .mod-direta_cna { border-top: 4px solid #2563eb; }
+    .mod-serasa .mod-name { color: #d97706; } .mod-serasa .mod-dot { background: #d97706; } .mod-serasa { border-top: 4px solid #d97706; }
+    .mod-feirao_serasa .mod-name { color: #dc2626; } .mod-feirao_serasa .mod-dot { background: #dc2626; } .mod-feirao_serasa { border-top: 4px solid #dc2626; }
+    
+    .final-value { font-size: 1.75rem; font-weight: 800; color: var(--text-main); margin: 4px 0; }
+    .savings-tag { display: inline-flex; align-items: center; gap: 4px; background: #ecfdf5; color: #059669; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; width: fit-content; }
+    .sim-row { display: flex; justify-content: space-between; font-size: 0.8125rem; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+    .sim-footer { font-size: 0.75rem; color: var(--text-muted); font-style: italic; line-height: 1.4; }
+    .btn-apply { background: #1e293b; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 0.8125rem; border: none; cursor: pointer; transition: background 0.2s; }
+    .btn-apply:hover { background: var(--primary); }
+
+    /* Status Badges */
+    .badge-pago { background: #d1fae5; color: #065f46; }
+    .badge-atrasado { background: #fee2e2; color: #991b1b; }
+    .badge-pendente { background: #fef3c7; color: #92400e; }
+    .ref-badge { background: #f1f5f9; color: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+
+    /* Agreement Cards */
+    .agreement-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 2rem; overflow: hidden; box-shadow: var(--shadow-sm); }
+    .agreement-header { background: #fafafa; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .agreement-id { background: var(--primary); color: white; padding: 2px 10px; border-radius: 6px; font-weight: 800; font-size: 0.875rem; }
+    .agreement-meta { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+    .status-select { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75rem; font-weight: 700; background: white; }
+    .btn-save-status { background: #f1f5f9; border: 1px solid var(--border); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; }
+    .btn-save-status:hover { background: #e2e8f0; }
+    .btn-pdf { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 6px; background: white; border: 1px solid var(--border); color: var(--text-muted); transition: all 0.2s; }
+    .btn-pdf:hover { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
+
+    .agreement-stats { display: grid; grid-template-columns: repeat(4, 1fr); padding: 1.5rem; gap: 1.5rem; border-bottom: 1px solid #f8fafc; }
+    .stat-box label { font-size: 0.625rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+    .stat-box span { font-size: 1.125rem; font-weight: 800; }
+
+    /* Expandable details */
+    .agreement-details details { border: 1px solid #f1f5f9; border-radius: 12px; margin: 0 1.5rem 1.5rem 1.5rem; }
+    .agreement-details summary { padding: 12px 16px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; font-weight: 700; color: var(--primary); background: #f8fafc; border-radius: 12px; }
+    .agreement-details summary::-webkit-details-marker { display: none; }
+    .installments-table { padding: 8px; border-top: 1px solid #f1f5f9; }
+    
+    .baixa-form { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+    .baixa-form input { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.75rem; font-weight: 600; width: 80px; }
+    .baixa-form input[type="date"] { width: 110px; }
+    .baixa-form button { background: #10b981; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.6875rem; font-weight: 700; cursor: pointer; }
+    .confirmed-tag { display: inline-flex; align-items: center; gap: 4px; color: #059669; font-weight: 700; font-size: 0.75rem; }
+
+    @media (max-width: 1024px) { .info-grid, .agreement-stats { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .debt-hero { flex-direction: column; text-align: left; align-items: flex-start; gap: 1.5rem; } .hero-stat { text-align: left; } .info-grid, .agreement-stats { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}

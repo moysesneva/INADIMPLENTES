@@ -1,0 +1,154 @@
+{% extends "nucleo/base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'financeiro_dashboard' %}">Financeiro</a></li>
+            <li class="breadcrumb-item active">Lote #{{ lote.id }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <!-- Resumo do Lote -->
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 border-top border-primary border-4">
+                <div class="card-body">
+                    <h5 class="card-title fw-bold">Detalhes do Lote</h5>
+                    <hr>
+                    <p class="mb-1 text-muted small">Status:</p>
+                    <p class="fw-bold fs-5 mb-3">
+                        {% if lote.status_processamento == 'CONCLUIDO' %}
+                            <span class="text-success">Concluído</span>
+                        {% elif lote.status_processamento == 'AGUARDANDO_REVISAO' %}
+                            <span class="text-warning">Revisão Pendente</span>
+                        {% else %}
+                            {{ lote.status_processamento }}
+                        {% endif %}
+                    </p>
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Linhas:</span>
+                        <span class="fw-bold">{{ lote.qtd_linhas_total }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted text-success">Sucessos:</span>
+                        <span class="fw-bold text-success">{{ lote.qtd_sucesso_auto }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="text-muted text-danger">Pendências:</span>
+                        <span class="fw-bold text-danger">{{ pendencias.count }}</span>
+                    </div>
+
+                    <div class="bg-light p-3 rounded mb-3 small">
+                        <p class="mb-1"><strong>Operador:</strong> {{ lote.operador.username }}</p>
+                        <p class="mb-0"><strong>Data:</strong> {{ lote.data_importacao|date:"d/m/Y H:i" }}</p>
+                    </div>
+
+                    <a href="{{ lote.arquivo.url }}" class="btn btn-outline-secondary btn-sm w-100 mb-2">
+                        <i class="bi bi-download"></i> Baixar Arquivo Original
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seções de Itens -->
+        <div class="col-md-9">
+            <!-- Pendências -->
+            {% if pendencias %}
+            <div class="card shadow-sm border-0 mb-4 bg-warning bg-opacity-10 border-start border-warning border-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="card-title mb-0 text-warning-emphasis fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Itens Pendentes de Conciliação
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 bg-white shadow-sm">
+                        <thead class="table-warning opacity-75">
+                            <tr>
+                                <th class="ps-4">Dados Brutos (CSV)</th>
+                                <th>Motivo da Pendência</th>
+                                <th class="text-end pe-4" style="width: 250px;">Ação: Informar ID Acordo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pendencias %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="small">
+                                        <strong>CPF:</strong> {{ p.raw_cpf }} | 
+                                        <strong>ID Informado:</strong> {{ p.raw_acordo_id }}<br>
+                                        <strong>Valor:</strong> {{ p.raw_valor }} | 
+                                        <strong>Data:</strong> {{ p.raw_data }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-danger small">{{ p.motivo_pendencia }}</span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <form method="post" action="{% url 'resolver_pendencia' p.id %}" class="d-flex gap-2">
+                                        {% csrf_token %}
+                                        <input type="number" name="acordo_id" placeholder="ID Real" class="form-control form-control-sm" required>
+                                        <button type="submit" class="btn btn-sm btn-success px-3">Resolver</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Pagamentos Realizados -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0 fw-bold">Pagamentos Registrados neste Lote</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">ID Transação</th>
+                                <th>Acordo</th>
+                                <th>Devedor</th>
+                                <th>Data Pagto</th>
+                                <th>Valor</th>
+                                <th>Meio</th>
+                                <th class="text-end pe-4">Manual?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pg in pagamentos %}
+                            <tr>
+                                <td class="ps-4 text-muted small">#{{ pg.id }}</td>
+                                <td>
+                                    <a href="{% url 'devedor_detail' pg.acordo.devedor.id %}" class="fw-bold text-decoration-none">
+                                        {{ pg.acordo.id }} / {{ pg.acordo.numero_acordo|default:"N/A" }}
+                                    </a>
+                                </td>
+                                <td>{{ pg.acordo.devedor.nome }}</td>
+                                <td>{{ pg.data_pagamento|date:"d/m/Y" }}</td>
+                                <td class="fw-bold">R$ {{ pg.valor_pago }}</td>
+                                <td><span class="small text-muted">{{ pg.meio_pagamento }}</span></td>
+                                <td class="text-end pe-4">
+                                    {% if pg.reconciliado_manualmente %}
+                                        <span class="text-warning"><i class="bi bi-person-check-fill" title="Consiliado Manualmente"></i></span>
+                                    {% else %}
+                                        <span class="text-success"><i class="bi bi-robot" title="Match Automático"></i></span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted italic">Nenhum pagamento registrado neste lote.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

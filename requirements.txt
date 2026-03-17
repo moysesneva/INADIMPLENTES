@@ -1,0 +1,15 @@
+asgiref==3.11.1
+Django==6.0.3
+django-environ==0.13.0
+django-filter==25.2
+et_xmlfile==2.0.0
+numpy==2.4.3
+openpyxl==3.1.5
+pandas==3.0.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+six==1.17.0
+sqlparse==0.5.5
+tzdata==2025.3
+gunicorn==23.0.0
+whitenoise==6.9.0

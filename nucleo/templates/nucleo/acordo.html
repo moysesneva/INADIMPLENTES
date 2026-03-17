@@ -1,0 +1,108 @@
+{% load moeda_br %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Gerar Acordo</title>
+
+<style>
+body{
+    font-family:Arial;
+    margin:30px;
+}
+
+input{
+    padding:6px;
+}
+
+button{
+    padding:8px 14px;
+    margin-right: 10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Gerar Acordo</h1>
+
+{% if simulacao %}
+<div style="background: #eef2f7; padding:15px; border-radius:8px; border-left: 5px solid #1f3c88; margin-bottom: 20px;">
+    <h3 style="margin-top:0;">Modalidade: {{ simulacao.modalidade_label }}</h3>
+    <p><strong>Dívida Original:</strong> {{ simulacao.valor_original|moeda_br }}</p>
+    <p><strong>Desconto sugerido:</strong> {{ simulacao.desconto_concedido|moeda_br }}</p>
+    <p style="color: #666; font-size: 0.9em;">
+        * Limite de Parcelas: {{ simulacao.parcelas_maximas }} | Entrada Mínima: {{ simulacao.entrada_minima|moeda_br }}
+    </p>
+</div>
+{% endif %}
+
+<p><strong>Responsável:</strong> {{ devedor.nome }}</p>
+<p><strong>CPF:</strong> {{ devedor.cpf }}</p>
+<p><strong>Total Considerado:</strong> 
+    {% if simulacao %}
+        {{ simulacao.valor_final|moeda_br }} 
+        <span style="text-decoration: line-through; color: #999; font-size: 0.8em;">({{ simulacao.valor_base|moeda_br }})</span>
+    {% else %}
+        {{ total|moeda_br }}
+    {% endif %}
+</p>
+
+<hr>
+
+<form method="get">
+<input type="hidden" name="modalidade" value="{{ modalidade_id|default:'' }}">
+
+<p>
+Entrada (R$):
+<input type="number" step="0.01" name="entrada" value="{{ entrada|stringformat:'.2f' }}">
+{% if simulacao %}
+    <span style="font-size: 0.8em; color: #666;">(Sugestão: {{ simulacao.entrada_minima|moeda_br }})</span>
+{% endif %}
+</p>
+
+<p>
+Parcelas:
+<input type="number" name="parcelas" value="{{ parcelas }}" min="1" {% if simulacao %}max="{{ simulacao.parcelas_maximas }}"{% endif %}>
+{% if simulacao %}
+    <span style="font-size: 0.8em; color: #666;">(Máx: {{ simulacao.parcelas_maximas }})</span>
+{% endif %}
+</p>
+
+<button type="submit">Recalcular</button>
+
+</form>
+
+<hr>
+
+<h2>Resultado da Simulação</h2>
+
+<p><strong>Total Negociado:</strong> {{ total|moeda_br }} 
+    {% if modalidade_id %}
+        <span style="color: #666; font-size: 0.9em;">(Original: {{ total_bruto|moeda_br }})</span>
+    {% endif %}
+</p>
+<p><strong>Entrada:</strong> {{ entrada|moeda_br }}</p>
+<p><strong>Saldo Devido:</strong> {{ saldo|moeda_br }}</p>
+<p>Parcelas: {{ parcelas }}</p>
+<p>Valor da parcela: {{ valor_parcela|moeda_br }}</p>
+
+<hr>
+
+<form method="post" action="{% url 'salvar_acordo' devedor.id %}">
+    {% csrf_token %}
+    <input type="hidden" name="entrada" value="{{ entrada }}">
+    <input type="hidden" name="parcelas" value="{{ parcelas }}">
+    <input type="hidden" name="modalidade" value="{{ modalidade_id|default:'' }}">
+
+    <button type="submit">Salvar Acordo</button>
+</form>
+
+<br>
+
+<a href="{% url 'devedor_detail' devedor.id %}">← Voltar</a>
+
+</body>
+</html>
