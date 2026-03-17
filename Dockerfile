@@ -5,7 +5,7 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE cna_inadimplentes.settings
-ENV PORT 8000
+ENV PORT 3000
 
 # Set work directory
 WORKDIR /app
@@ -30,11 +30,11 @@ COPY . .
 RUN python manage.py collectstatic --noinput
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 3000
 
 # Healthcheck to ensure the container is running correctly
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8000/login/ || exit 1
+  CMD curl -f http://localhost:3000/login/ || exit 1
 
 # Run the application
 RUN chmod +x start.sh
