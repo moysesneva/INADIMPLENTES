@@ -550,3 +550,30 @@ def portal_devedor(request, token):
         "devedor": devedor,
         "acordos": acordos,
     })
+
+
+@login_required
+def api_registrar_contato(request):
+    """
+    Registra uma tentativa de contato (Telefone/WhatsApp) feita pelo operador.
+    """
+    if request.method != "POST":
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    devedor_id = request.POST.get('devedor_id')
+    meio = request.POST.get('meio', 'CONTATO') # TELEFONE ou WHATSAPP
+    
+    if not devedor_id:
+        return JsonResponse({'error': 'ID do devedor é obrigatório'}, status=400)
+    
+    devedor = get_object_or_404(Devedor, id=devedor_id)
+    
+    # Criar registro de auditoria
+    RegistroAuditoria.objects.create(
+        usuario=request.user,
+        acao='NOTIFICACAO_ENVIADA',
+        detalhes=f"Tentativa de contato via {meio} registrada pelo dashboard.",
+        registro_id=str(devedor.id)
+    )
+    
+    return JsonResponse({'status': 'success', 'message': f'Contato via {meio} registrado.'})

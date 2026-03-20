@@ -233,10 +233,16 @@
 
                 <div style="display: flex; gap: 8px; margin-left: 2rem;">
                     <a href="{% url 'devedor_detail' item.devedor_id %}" class="btn btn-secondary" style="padding: 10px 18px; font-size: 0.8125rem; font-weight: 600;">Ver Perfil</a>
-                    <a href="{% url 'criar_acordo' item.devedor_id %}" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.8125rem; font-weight: 600;">Negociar</a>
-                    <button onclick="abrirModalMensagem('{{ item.devedor_id }}', '{{ item.segmento }}')" class="btn btn-secondary" style="padding: 10px 12px; border: 1px solid var(--border);" title="WhatsApp">
-                        📲
-                    </button>
+                    <a href="{% url 'gerar_acordo' item.devedor_id %}" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.8125rem; font-weight: 600;">Negociar</a>
+                    
+                    <div style="display: flex; gap: 4px; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 4px;">
+                        <button onclick="registrarContato('{{ item.devedor_id }}', 'TELEFONE', this)" class="btn btn-secondary" style="padding: 10px 12px;" title="Registrar Contato Telefônico">
+                            📞
+                        </button>
+                        <button onclick="copiarERegistrarWhatsApp('{{ item.devedor_id }}', '{{ item.segmento }}', this)" class="btn btn-secondary" style="padding: 10px 12px;" title="Abrir/Registrar WhatsApp">
+                            📲
+                        </button>
+                    </div>
                 </div>
             </div>
             {% empty %}
@@ -479,6 +485,55 @@
                     .catch(err => {
                         textarea.value = "Erro ao gerar mensagem. Tente novamente.";
                     });
+            }
+
+            function registrarContato(devedorId, meio, btnElement) {
+                const originalContent = btnElement.innerHTML;
+                btnElement.innerHTML = "⏳";
+                btnElement.disabled = true;
+
+                const formData = new FormData();
+                formData.append('devedor_id', devedorId);
+                formData.append('meio', meio);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                fetch("{% url 'api_registrar_contato' %}", {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        btnElement.innerHTML = "✅";
+                        btnElement.title = "Registrado com sucesso";
+                        setTimeout(() => {
+                            btnElement.innerHTML = originalContent;
+                            btnElement.disabled = false;
+                        }, 2000);
+                    } else {
+                        alert("Erro ao registrar contato.");
+                        btnElement.innerHTML = "❌";
+                        setTimeout(() => {
+                            btnElement.innerHTML = originalContent;
+                            btnElement.disabled = false;
+                        }, 2000);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    btnElement.innerHTML = "❌";
+                    setTimeout(() => {
+                        btnElement.innerHTML = originalContent;
+                        btnElement.disabled = false;
+                    }, 2000);
+                });
+            }
+
+            function copiarERegistrarWhatsApp(devedorId, segmento, btnElement) {
+                // Abre o modal primeiro
+                abrirModalMensagem(devedorId, segmento);
+                // Registra a tentativa
+                registrarContato(devedorId, 'WHATSAPP', btnElement);
             }
 
             function fecharModalMensagem() {

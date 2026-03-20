@@ -23,4 +23,6 @@ urlpatterns = [
     path("financeiro/pendencia/<int:pk>/resolver/", views.resolver_pendencia, name="resolver_pendencia"),
     # Portal do Devedor (Fase H)
     path("p/<uuid:token>/", views.portal_devedor, name="portal_devedor"),
+    path("api/contato/registrar/", views.api_registrar_contato, name="api_registrar_contato"),
+
 ]
