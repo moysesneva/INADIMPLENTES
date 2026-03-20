@@ -14,6 +14,7 @@ urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
     path("acordo/<int:pk>/status/", views.alterar_status_acordo, name="alterar_status_acordo"),
     path("parcela/<int:pk>/baixar/", views.baixar_parcela, name="baixar_parcela"),
+    path("mensageria/whatsapp/gerar/", views.api_gerar_mensagem_whatsapp, name="api_gerar_mensagem_whatsapp"),
     
     # Módulo Financeiro (Fase E)
     path("financeiro/", views.financeiro_dashboard, name="financeiro_dashboard"),

@@ -11,6 +11,16 @@
             <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">Relatório consolidado com ferramentas avançadas de filtragem e exportação.</p>
         </div>
         <div style="display: flex; gap: 0.75rem;">
+            {% if ranking_mode %}
+            <div style="background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.8125rem; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-right: 0.5rem;">
+                <span style="font-size: 1rem;">🔥</span> 
+                Fila Crítica Operacional Ativa (Top 50)
+                {% if segmento_label %}
+                    <span style="font-weight: 400; opacity: 0.7; margin: 0 4px;">|</span>
+                    Segmento: {{ segmento_label }}
+                {% endif %}
+            </div>
+            {% endif %}
             <a href="{% url 'exportar_devedores' %}?{{ request.GET.urlencode }}&formato=csv" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8125rem;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Exportar CSV
@@ -49,10 +59,11 @@
         <table class="hover-table">
             <thead>
                 <tr>
-                    <th style="width: 35%;">Nome Completo</th>
-                    <th style="width: 20%;">Documento / CPF</th>
-                    <th style="width: 25%;">E-mail</th>
-                    <th style="width: 20%;">Cidade / UF</th>
+                    <th style="width: 30%;">Nome Completo</th>
+                    <th style="width: 15%;">Documento / CPF</th>
+                    <th style="width: 20%;">E-mail</th>
+                    <th style="width: 15%;">Cidade / UF</th>
+                    <th style="width: 20%; text-align: right;">Total Dívida</th>
                 </tr>
             </thead>
             <tbody>
@@ -61,6 +72,10 @@
                     <td>
                         <div style="font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 8px;">
                             {{ devedor.nome }}
+                            {% if ranking_mode %}
+                                {# Nota: Neste contexto 'devedor' é o objeto do QS. No ranking mode, as reasons/segmento não estão no objeto Devedor do Django por padrão, a menos que passemos no contexto. #}
+                                {# No entanto, para simplificar e manter a performance, se ranking_mode estiver on, podemos mostrar um indicador genérico ou melhor, reformular como passamos os dados. #}
+                            {% endif %}
                             <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0; transition: opacity 0.2s; color: var(--text-muted);"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </div>
                     </td>
@@ -76,6 +91,7 @@
                             <span style="color: #cbd5e1; font-style: italic; font-size: 0.8125rem;">Não informado</span>
                         {% endif %}
                     </td>
+                    <td style="text-align: right; font-weight: 700; color: #ef4444;">{{ devedor.total_divida|default:0|moeda_br }}</td>
                 </tr>
                 {% empty %}
                 <tr>

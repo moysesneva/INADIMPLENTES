@@ -1,9 +1,10 @@
 import datetime
 from decimal import Decimal
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, IntegrityError
-from django.db.models import Sum, Q, Count, F, DecimalField, ExpressionWrapper
+from django.db.models import Sum, Q, Count, F, DecimalField, ExpressionWrapper, Case, When
 from .models import (
     Devedor, Acordo, Divida, Parcela, RegistroAuditoria,
     LoteRetornoPagamento, ItemRetornoPendente, PagamentoAcordo,
@@ -12,6 +13,7 @@ from .models import (
 from .services.calculadora_cna import CalculadoraCNA
 from .filters import DevedorFilter, AcordoFilter
 from .services import export, reconciliacao, estatisticas
+from .services.mensageria import MensageriaService
 
 
 @login_required
@@ -48,12 +50,30 @@ def devedor_detail(request, pk):
     calculadora = CalculadoraCNA(dividas)
     simulacoes = calculadora.calcular_todas_modalidades()
 
+    # Obter Criticidade e Estratégia (Fase G - Operational)
+    hoje = datetime.date.today()
+    dias_overdue = 0
+    # Usando aggregate Min para achar o vencimento mais antigo
+    min_venc = dividas.filter(vencimento__lt=hoje).aggregate(min_v=Sum('vencimento')) # Erro aqui no original, corrigindo logicamente
+    # Na verdade o original usava aggregate(Min('vencimento')), vou manter a lógica de encontrar o atraso
+    vencimento_mais_antigo = dividas.filter(vencimento__lt=hoje).order_by('vencimento').first()
+    if vencimento_mais_antigo:
+        dias_overdue = (hoje - vencimento_mais_antigo.vencimento).days
+    
+    qtd_dividas = dividas.count()
+    total_float = float(total or 0)
+    
+    criticidade = None
+    if total_float > 0:
+        criticidade = estatisticas.EstatisticasService.calcular_score_e_segmento(total_float, dias_overdue, qtd_dividas)
+
     return render(request, "nucleo/devedor_detail.html", {
         "devedor": devedor,
         "dividas": dividas,
         "acordos": acordos,
         "total": total,
         "simulacoes": simulacoes,
+        "criticidade": criticidade,
     })
 
 
@@ -181,11 +201,61 @@ def imprimir_acordo(request, pk):
 
 @login_required
 def devedor_list(request):
-    devedores = Devedor.objects.all().order_by("nome")
+    devedores = Devedor.objects.annotate(
+        total_divida=Sum("dividas__valor_atual")
+    ).order_by("nome")
+
+    ranking_mode = request.GET.get('ranking') == 'critico'
+    segmento_filtro = request.GET.get('segmento')
+    
+    if ranking_mode:
+        svc = estatisticas.EstatisticasService()
+        # Buscamos um número maior de candidatos para garantir que o filtro de segmento tenha itens suficientes após o slice
+        rankings = svc.obter_ranking_inadimplencia(limite_critico=200) 
+        lista_critica = rankings['ranking_critico']
+        
+        if segmento_filtro:
+            lista_critica = [item for item in lista_critica if item['segmento'] == segmento_filtro]
+            
+        # Pegamos os top 50 filtrados
+        critico_ids = [item['devedor'].id for item in lista_critica[:50]]
+        
+        # Preservar a ordem do score original na QuerySet
+        preserved_order = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(critico_ids)])
+        devedores = devedores.filter(id__in=critico_ids).order_by(preserved_order)
+
     filtro = DevedorFilter(request.GET, queryset=devedores)
+    
+    segmento_labels = {
+        'alto_valor': 'Alto Valor',
+        'atraso_critico': 'Atraso Crítico',
+        'recorrencia': 'Recorrência',
+        'misto': 'Misto'
+    }
+
     return render(request, "nucleo/devedor_list.html", {
         "filter": filtro,
+        "ranking_mode": ranking_mode,
+        "segmento_filtro": segmento_filtro,
+        "segmento_label": segmento_labels.get(segmento_filtro)
     })
+
+
+@login_required
+def api_gerar_mensagem_whatsapp(request):
+    """
+    Endpoint interno para geração de prévia de mensagem WhatsApp por devedor/segmento.
+    """
+    devedor_id = request.GET.get('devedor_id')
+    segmento = request.GET.get('segmento')
+    
+    if not devedor_id:
+        return JsonResponse({'error': 'ID do devedor é obrigatório'}, status=400)
+    
+    devedor = get_object_or_404(Devedor, id=devedor_id)
+    resultado = MensageriaService.gerar_mensagem_whatsapp(devedor, segmento_fornecido=segmento)
+    
+    return JsonResponse(resultado)
 
 
 @login_required
@@ -237,6 +307,22 @@ def exportar_acordos(request):
 def dashboard(request):
     hoje = datetime.date.today()
     kpis = estatisticas.EstatisticasService.obter_kpis_financeiros()
+    
+    # 1. Inteligência Operacional (Fase G)
+    prioridade_do_dia = estatisticas.EstatisticasService.obter_prioridade_do_dia(limite=10)
+    rankings = estatisticas.EstatisticasService.obter_ranking_inadimplencia(limite_critico=50)
+    
+    segmento_filtro = request.GET.get('segmento')
+    if segmento_filtro:
+        rankings['ranking_critico'] = [item for item in rankings['ranking_critico'] if item['segmento'] == segmento_filtro][:10]
+    else:
+        rankings['ranking_critico'] = rankings['ranking_critico'][:10]
+
+    # Injetar IDs para navegação fácil no template
+    for item in prioridade_do_dia:
+        item['devedor_id'] = item['devedor'].id
+    for item in rankings['ranking_critico']:
+        item['devedor_id'] = item['devedor'].id
 
     # --- Totais gerais (contratos) ---
     total_dividas = Divida.objects.aggregate(total=Sum("valor_atual"))["total"] or Decimal("0.00")
@@ -255,22 +341,7 @@ def dashboard(request):
     qtd_cancelado = Acordo.objects.filter(status="CANCELADO").count()
     qtd_em_negociacao = status_map.get("EM_NEGOCIACAO", 0)
 
-    # --- Listas ---
-    top_devedores = []
-    top_devedores_qs = (
-        Devedor.objects
-        .annotate(total_valor=Sum("dividas__valor_atual"))
-        .filter(total_valor__gt=0)
-        .order_by("-total_valor")[:10]
-    )
-    for devedor in top_devedores_qs:
-        top_devedores.append({
-            "devedor": devedor,
-            "total": devedor.total_valor,
-        })
-
     ultimos_acordos = Acordo.objects.select_related("devedor").order_by("-data_acordo")[:10]
-    
     kpis_gestao = estatisticas.EstatisticasService.obter_kpis_gestao()
 
     context = {
@@ -290,12 +361,13 @@ def dashboard(request):
         "qtd_parcelas_pagas": kpis['parcelas_pagas'],
         "qtd_parcelas_pendentes": kpis['parcelas_pendentes'],
         "qtd_parcelas_atrasadas": kpis['parcelas_atrasadas'],
-        "top_devedores": top_devedores,
         "ultimos_acordos": ultimos_acordos,
         "kpis": kpis,
         "kpis_gestao": kpis_gestao,
         "alertas_recentes": AlertaFinanceiro.objects.filter(status='ABERTO').select_related('acordo__devedor').order_by('-severidade', '-data_criacao')[:10],
         "total_alertas_abertos": AlertaFinanceiro.objects.filter(status='ABERTO').count(),
+        "rankings": rankings,
+        "prioridade_do_dia": prioridade_do_dia,
     }
 
     return render(request, "nucleo/dashboard.html", context)

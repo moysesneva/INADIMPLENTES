@@ -1,8 +1,9 @@
-from django.db.models import Sum, Count, Q, F, DecimalField, ExpressionWrapper, Avg
+from django.db.models import Sum, Count, Q, F, DecimalField, ExpressionWrapper, Avg, Min
 from django.db.models.functions import Cast
 from django.utils import timezone
 from decimal import Decimal
 import datetime
+import math
 from ..models import Acordo, Parcela, PagamentoAcordo, Devedor, Divida
 from django.contrib.auth.models import User
 
@@ -138,5 +139,181 @@ class EstatisticasService:
             'conversao_global': conversao_global,
         }
 
-from django.db.models import Min
+    @staticmethod
+    def calcular_score_e_segmento(total_open_amount, dias_overdue, total_debts):
+        """
+        Lógica centralizada para cálculo de score, segmentação e estratégia.
+        Inclui agora Categoria de Atenção e Prioridade Operacional (Fase G).
+        """
+        # 1. Cálculo do Score Base (Fórmula Logarítmica Original)
+        # Score = (log10(Valor+1)*10) + (Dias*0.2) + (Dividas*2)
+        score_base = (math.log10(total_open_amount + 1) * 10) + \
+                     (dias_overdue * 0.2) + \
+                     (total_debts * 2)
+
+        # 2. Pesos para dominância (diagnóstico)
+        v_weight = math.log10(total_open_amount + 1) * 10
+        a_weight = dias_overdue * 0.2
+        r_weight = total_debts * 2
+
+        # 3. Limiares Críticos e Diagnóstico
+        thresholds_met = 0
+        reasons = []
+        if total_open_amount > 5000: 
+            thresholds_met += 1
+            reasons.append({'id': 'valor', 'label': 'Valor Elevado', 'icon': '💰'})
+        if dias_overdue > 90: 
+            thresholds_met += 1
+            reasons.append({'id': 'atraso', 'label': 'Atraso Crítico', 'icon': '⏳'})
+        if total_debts >= 3: 
+            thresholds_met += 1
+            reasons.append({'id': 'recorrencia', 'label': 'Recorrência', 'icon': '🔄'})
+
+        # 4. Segmentação de Risco
+        if thresholds_met >= 2:
+            segmento = "misto"
+            segmento_label = "Misto"
+            estrategia = "Foco em Conciliação Total / Abordagem de Alta Prioridade (360º)"
+        else:
+            weights = [
+                (v_weight, "alto_valor", "Alto Valor", "Priorizar Negociação Direta / Desconto Agressivo à Vista"),
+                (a_weight, "atraso_critico", "Atraso Crítico", "Ação Urgente / Reforçar Prazos e Restrições de Crédito"),
+                (r_weight, "recorrencia", "Recorrência", "Monitoramento Constante / Quebra de Hábito de Atraso")
+            ]
+            _, segmento, segmento_label, estrategia = max(weights, key=lambda x: x[0])
+
+        # 5. Categoria de Atenção e Bônus de Prioridade (Fase G)
+        # Regras explícitas de atenção operacional
+        atencao_categoria = "Acompanhamento Recomendado"
+        atencao_bonus = 0
+        proximo_passo = "Monitorar evolução do débito e aguardar janela de contato."
+
+        if score_base > 80 or dias_overdue > 180:
+            atencao_categoria = "Atenção Imediata"
+            atencao_bonus = 20
+            proximo_passo = "Priorizar contato telefônico hoje. Risco crítico de perda/inadimplência prolongada."
+        elif segmento == "misto" or thresholds_met >= 2:
+            atencao_categoria = "Caso Complexo"
+            atencao_bonus = 15
+            proximo_passo = "Avaliar composição da dívida. Possível necessidade de suporte de supervisão para fechar."
+        elif total_open_amount > 5000 and dias_overdue < 60:
+            atencao_categoria = "Negociação Prioritária"
+            atencao_bonus = 10
+            proximo_passo = "Oferecer condições agressivas para liquidação rápida (Ticket alto em estágio inicial)."
+        elif total_debts >= 3:
+            atencao_categoria = "Recorrência Crítica"
+            atencao_bonus = 5
+            proximo_passo = "Verificar histórico de promessas antes de conceder novos prazos."
+
+        prioridade_operacional = score_base + atencao_bonus
+
+        return {
+            'score': round(score_base, 2),
+            'segmento': segmento,
+            'segmento_label': segmento_label,
+            'estrategia': estrategia,
+            'reasons': reasons,
+            'atencao_categoria': atencao_categoria,
+            'atencao_bonus': atencao_bonus,
+            'proximo_passo': proximo_passo,
+            'prioridade_operacional': round(prioridade_operacional, 2)
+        }
+
+    @staticmethod
+    def obter_ranking_inadimplencia(limite_critico=10):
+        """
+        Gera os rankings de inadimplência para auxílio operacional.
+        1. Top por Valor Aberto
+        2. Top por Idade de Atraso (mais antigo)
+        3. Ranking Crítico (Score Combinado - Nova Fórmula Logarítmica)
+        
+        Formula:
+        Score = (log10(total_open_amount + 1) * 10) + (days_overdue * 0.2) + (total_debts * 2)
+        """
+        hoje = timezone.now().date()
+
+        # 1. Top Devedores por Valor Aberto
+        top_valor = Devedor.objects.annotate(
+            total_aberto=Sum('dividas__valor_atual'),
+            qtd_dividas=Count('dividas')
+        ).filter(total_aberto__gt=0).order_by('-total_aberto')[:10]
+
+        # 2. Top Devedores por Idade de Atraso
+        top_atraso = Devedor.objects.annotate(
+            vencimento_mais_antigo=Min('dividas__vencimento', filter=Q(dividas__vencimento__lt=hoje))
+        ).filter(vencimento_mais_antigo__isnull=False).order_by('vencimento_mais_antigo')[:10]
+
+        for d in top_atraso:
+            d.dias_atraso = (hoje - d.vencimento_mais_antigo).days
+
+        # 3. Ranking de Inadimplência Crítica (Fórmula de Produção)
+        # Processamos em Python para permitir a escala logarítmica complexa
+        candidatos = Devedor.objects.annotate(
+            total_aberto=Sum('dividas__valor_atual'),
+            qtd_dividas=Count('dividas'),
+            vencimento_mais_antigo=Min('dividas__vencimento', filter=Q(dividas__vencimento__lt=hoje))
+        ).filter(total_aberto__gt=0)
+
+        ranking_critico = []
+        for d in candidatos:
+            dias_overdue = (hoje - d.vencimento_mais_antigo).days if d.vencimento_mais_antigo else 0
+            total_open_amount = float(d.total_aberto or 0)
+            total_debts = d.qtd_dividas or 0
+
+            ctx = EstatisticasService.calcular_score_e_segmento(total_open_amount, dias_overdue, total_debts)
+            
+            ranking_critico.append({
+                'devedor': d,
+                'total_aberto': d.total_aberto,
+                'qtd_dividas': total_debts,
+                'dias_atraso': dias_overdue,
+                'vencimento_mais_antigo': d.vencimento_mais_antigo,
+                **ctx
+            })
+
+        # Ordenação Descendente por Score
+        ranking_critico = sorted(ranking_critico, key=lambda x: x['score'], reverse=True)[:limite_critico]
+
+        return {
+            'top_valor': top_valor,
+            'top_atraso': top_atraso,
+            'ranking_critico': ranking_critico
+        }
+
+    @staticmethod
+    def obter_prioridade_do_dia(limite=10):
+        """
+        Gera a fila de Prioridade do Dia (Fase G).
+        Ordenada pela Prioridade Operacional (Score + Bônus de Atenção).
+        """
+        hoje = timezone.now().date()
+        
+        # 1. Candidatos: Devedores com saldo em aberto
+        candidatos = Devedor.objects.annotate(
+            total_aberto=Sum('dividas__valor_atual'),
+            qtd_dividas=Count('dividas'),
+            vencimento_mais_antigo=Min('dividas__vencimento', filter=Q(dividas__vencimento__lt=hoje))
+        ).filter(total_aberto__gt=0)
+
+        fila_operacional = []
+        for d in candidatos:
+            dias_overdue = (hoje - d.vencimento_mais_antigo).days if d.vencimento_mais_antigo else 0
+            total_open_amount = float(d.total_aberto or 0)
+            total_debts = d.qtd_dividas or 0
+
+            # 2. Calcular Inteligência Operacional
+            ctx = EstatisticasService.calcular_score_e_segmento(total_open_amount, dias_overdue, total_debts)
+            
+            fila_operacional.append({
+                'devedor': d,
+                'total_aberto': d.total_aberto,
+                'qtd_dividas': total_debts,
+                'dias_atraso': dias_overdue,
+                **ctx
+            })
+
+        # 3. Ordenação por Prioridade Operacional (Descendente)
+        fila_operacional = sorted(fila_operacional, key=lambda x: x['prioridade_operacional'], reverse=True)[:limite]
+
+        return fila_operacional
 from django.db import models

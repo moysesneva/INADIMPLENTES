@@ -27,7 +27,7 @@
     <tr>
         <th>Nº Acordo</th>
         <th>Devedor</th>
-        <th>CPF</th>
+        <th>Modalidade</th>
         <th>Valor</th>
         <th>Parcelas</th>
         <th>Status</th>
@@ -38,12 +38,15 @@
     {% for acordo in filter.qs %}
     <tr>
         <td>{{ acordo.numero_acordo }}</td>
-        <td>{{ acordo.devedor.nome }}</td>
-        <td>{{ acordo.devedor.cpf }}</td>
+        <td>
+            <div style="font-weight: 600;">{{ acordo.devedor.nome }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ acordo.devedor.cpf }}</div>
+        </td>
+        <td style="font-size: 0.8125rem; font-weight: 600; color: var(--primary);">{{ acordo.get_modalidade_display|default:"Manual" }}</td>
         <td>{{ acordo.valor_total|moeda_br }}</td>
         <td>{{ acordo.parcelas }}</td>
         <td>{{ acordo.get_status_display }}</td>
-        <td>{{ acordo.data_acordo|date:"d/m/Y H:i" }}</td>
+        <td>{{ acordo.data_acordo|date:"d/m/Y" }}</td>
         <td>
             <a href="{% url 'imprimir_acordo' acordo.id %}" target="_blank">Abrir PDF</a>
         </td>
